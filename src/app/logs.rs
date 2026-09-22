@@ -39,6 +39,11 @@ impl LogLineMeta {
 
 pub(super) const JSON_CACHE_LIMIT: usize = 8 * 1024 * 1024;
 const JSON_RECORD_LIMIT: usize = 4096;
+/// External formatters get a much larger input allowance than the built-in
+/// pretty-printer: stack traces routinely exceed the built-in limit, and the
+/// tool decides what it can handle. Output is still charged to the shared
+/// cache budget, which bounds memory.
+const EXTERNAL_RECORD_LIMIT: usize = 256 * 1024;
 
 impl LogLineMeta {
     fn format_json(
@@ -52,7 +57,7 @@ impl LogLineMeta {
             return;
         }
         self.checked_json = true;
-        if line.len() > JSON_RECORD_LIMIT || line.len() > *budget {
+        if line.len() > *budget {
             return;
         }
         *budget -= line.len();
@@ -88,6 +93,9 @@ impl LogLineMeta {
             return;
         }
         let pretty = if format_command.is_empty() {
+            if line.len() > JSON_RECORD_LIMIT {
+                return;
+            }
             let Ok(value) = serde_json::from_str::<serde_json::Value>(payload) else {
                 return;
             };
@@ -97,6 +105,9 @@ impl LogLineMeta {
             };
             pretty
         } else {
+            if line.len() > EXTERNAL_RECORD_LIMIT {
+                return;
+            }
             match format_external(format_command, payload) {
                 ExternalFormat::Formatted(pretty) => pretty,
                 ExternalFormat::Invalid => return,
@@ -148,15 +159,25 @@ fn format_external(command: &[String], payload: &str) -> ExternalFormat {
         Ok(child) => child,
         Err(_) => return ExternalFormat::Missing,
     };
-    if !args.iter().any(|arg| arg == "$LINE")
-        && let Some(mut stdin) = child.stdin.take()
-    {
-        // The payload is at most JSON_RECORD_LIMIT bytes, well under the pipe
-        // capacity, so the write finishes even if the tool never reads stdin.
-        stdin.write_all(payload.as_bytes()).ok();
+    // Write from a thread: a payload larger than the pipe capacity must not
+    // block the caller when the tool stops draining stdin.
+    let writer = if !args.iter().any(|arg| arg == "$LINE") {
+        let stdin = child.stdin.take();
+        let payload = payload.to_owned();
+        Some(std::thread::spawn(move || {
+            if let Some(mut stdin) = stdin {
+                stdin.write_all(payload.as_bytes()).ok();
+            }
+        }))
+    } else {
+        drop(child.stdin.take());
+        None
+    };
+    let output = child.wait_with_output();
+    if let Some(writer) = writer {
+        let _ = writer.join();
     }
-    drop(child.stdin.take());
-    match child.wait_with_output() {
+    match output {
         Ok(output) if output.status.success() => {
             let Ok(text) = String::from_utf8(output.stdout) else {
                 return ExternalFormat::Invalid;
