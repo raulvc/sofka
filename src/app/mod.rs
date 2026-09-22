@@ -1172,6 +1172,12 @@ pub struct LogsView {
     pub timestamps: bool,
     pub json: bool,
     json_budget: usize,
+    /// Configured external formatter (`[logs] format_command`); empty = the
+    /// built-in pretty-printer.
+    pub format_command: Vec<String>,
+    /// Sticky: the formatter binary failed to spawn once, so later records
+    /// skip the attempt instead of re-failing per line.
+    format_broken: bool,
     pub stopped: bool,
     /// Fullscreen (`F`, k9s): the pane takes the whole frame with no header,
     /// borders, or status line, so terminal text selection copies clean lines.
@@ -1212,6 +1218,8 @@ impl Default for LogsView {
             timestamps: false,
             json: false,
             json_budget: logs::JSON_CACHE_LIMIT,
+            format_command: Vec::new(),
+            format_broken: false,
             stopped: false,
             fullscreen: false,
             since_anchor: None,
