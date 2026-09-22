@@ -389,7 +389,8 @@ pub struct LogsConfig {
     /// without a shell (like `ui.notify.command`). The record payload arrives
     /// on stdin, or as a whole argument wherever a `$LINE` placeholder
     /// appears. Non-JSON records, non-zero exits, empty or non-UTF-8 output,
-    /// and missing binaries fall back to the raw line.
+    /// and missing binaries fall back to the raw line. Configuring it starts
+    /// log views in the `pretty` step of the cycle.
     pub format_command: Vec<String>,
 }
 
