@@ -1432,6 +1432,8 @@ impl App {
         self.bundle_cfg = resolved.config.bundle;
         self.pvc_cfg = resolved.config.pvc_explore;
         self.logs_cfg = resolved.config.logs;
+        self.logs.format_command = self.logs_cfg.format_command.clone();
+        self.logs.format_broken = false;
         self.fleet_cfg = resolved.config.fleet;
         // Running forwards keep running; :reload only refreshes what's saved.
         self.forwards_cfg = resolved.config.forwards;

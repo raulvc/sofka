@@ -351,6 +351,7 @@ pub struct FleetConfig {
 /// buffer = 5000      # max lines retained while following (bounded tail)
 /// since = "1h"       # optional: only logs newer than this, within the tail limit
 /// fullscreen = false # open log views fullscreen (F toggles; k9s fullScreenLogs)
+/// format_command = ["pino-pretty"]   # J pipes JSON records through this argv
 /// ```
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
@@ -366,6 +367,12 @@ pub struct LogsConfig {
     /// Start log views fullscreen — the pane takes the whole frame, without
     /// header or borders (k9s `fullScreenLogs`). `F` toggles per session.
     pub fullscreen: bool,
+    /// External formatter used by the logs `J` toggle instead of the built-in
+    /// pretty-printer, as argv without a shell (like `ui.notify.command`).
+    /// The record payload arrives on stdin, or as a whole argument wherever a
+    /// `$LINE` placeholder appears. Non-JSON records, non-zero exits, empty
+    /// or non-UTF-8 output, and missing binaries fall back to the raw line.
+    pub format_command: Vec<String>,
 }
 
 impl Default for LogsConfig {
@@ -375,6 +382,7 @@ impl Default for LogsConfig {
             buffer: 5000,
             since: None,
             fullscreen: false,
+            format_command: Vec::new(),
         }
     }
 }
@@ -2193,6 +2201,21 @@ mod tests {
     fn logging_rotation_floor_survives_a_zero() {
         let cfg: Config = toml::from_str("[logging]\nmax_size_mb = 0\n").unwrap();
         assert_eq!(cfg.logging.max_bytes(), 64 * 1024);
+    }
+
+    #[test]
+    fn parses_logs_format_command() {
+        let toml = r#"
+            [logs]
+            format_command = ["pino-pretty", "--single-line"]
+        "#;
+        let cfg: Config = toml::from_str(toml).unwrap();
+        assert_eq!(cfg.logs.format_command, ["pino-pretty", "--single-line"]);
+        let cfg: Config =
+            toml::from_str("[logs]\nformat_command = [\"jq\", \".\", \"$LINE\"]\n").unwrap();
+        assert_eq!(cfg.logs.format_command, ["jq", ".", "$LINE"]);
+        let cfg: Config = toml::from_str("").unwrap();
+        assert!(cfg.logs.format_command.is_empty());
     }
 
     #[test]

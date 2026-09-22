@@ -35212,6 +35212,62 @@ async fn log_json_shortcut_formats_primitive_arrays_with_trailing_whitespace() {
 }
 
 #[tokio::test]
+async fn log_json_shortcut_formats_records_through_the_configured_command() {
+    let (mut app, _rx) = test_app();
+    app.mode = Mode::Logs;
+    app.logs.format_command = vec!["tr".into(), "a-z".into(), "A-Z".into()];
+    shortcut_log_lines(
+        &mut app,
+        vec![r#"[app] {"msg":"hello"}"#.into(), "plain text".into()],
+    );
+    app.handle_key(press(KeyCode::Char('J'))).unwrap();
+    assert!(app.logs.json);
+    assert_eq!(app.logs.display_line(0), r#"[app] {"MSG":"HELLO"}"#);
+    assert_eq!(app.logs.display_line(1), "plain text");
+    assert_eq!(app.logs.view.lines[0], r#"[app] {"msg":"hello"}"#);
+    app.handle_key(press(KeyCode::Char('J'))).unwrap();
+    assert_eq!(app.logs.display_line(0), r#"[app] {"msg":"hello"}"#);
+}
+
+#[tokio::test]
+async fn log_json_shortcut_supports_a_line_placeholder_argument() {
+    let (mut app, _rx) = test_app();
+    app.mode = Mode::Logs;
+    app.logs.format_command = vec!["printf".into(), "X:%s".into(), "$LINE".into()];
+    shortcut_log_lines(&mut app, vec![r#"[app] {"msg":"hi"}"#.into()]);
+    app.handle_key(press(KeyCode::Char('J'))).unwrap();
+    assert_eq!(app.logs.display_line(0), r#"[app] X:{"msg":"hi"}"#);
+}
+
+#[tokio::test]
+async fn log_json_shortcut_falls_back_to_raw_when_the_tool_is_missing() {
+    let (mut app, _rx) = test_app();
+    app.mode = Mode::Logs;
+    app.logs.format_command = vec!["/nonexistent/sofka-formatter".into()];
+    shortcut_log_lines(&mut app, vec![r#"[app] {"msg":"hi"}"#.into()]);
+    app.handle_key(press(KeyCode::Char('J'))).unwrap();
+    assert!(app.logs.json);
+    assert_eq!(app.logs.display_line(0), r#"[app] {"msg":"hi"}"#);
+    shortcut_log_lines(&mut app, vec![r#"[app] {"msg":"second"}"#.into()]);
+    assert_eq!(app.logs.display_line(1), r#"[app] {"msg":"second"}"#);
+}
+
+#[tokio::test]
+async fn log_json_shortcut_falls_back_to_raw_when_the_tool_fails() {
+    let (mut app, _rx) = test_app();
+    app.mode = Mode::Logs;
+    app.logs.format_command = vec!["false".into()];
+    shortcut_log_lines(&mut app, vec![r#"[app] {"msg":"hi"}"#.into()]);
+    app.handle_key(press(KeyCode::Char('J'))).unwrap();
+    assert_eq!(app.logs.display_line(0), r#"[app] {"msg":"hi"}"#);
+    shortcut_log_lines(&mut app, vec![r#"[app] {"msg":"two"}"#.into()]);
+    assert_eq!(app.logs.display_line(1), r#"[app] {"msg":"two"}"#);
+    app.logs.format_command = vec!["true".into()];
+    shortcut_log_lines(&mut app, vec![r#"[app] {"msg":"three"}"#.into()]);
+    assert_eq!(app.logs.display_line(2), r#"[app] {"msg":"three"}"#);
+}
+
+#[tokio::test]
 async fn log_json_shortcut_keeps_scroll_follow_wrap_and_record_limits() {
     use ratatui::{Terminal, backend::TestBackend};
     let (mut app, _rx) = test_app();

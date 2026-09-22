@@ -41,7 +41,13 @@ pub(super) const JSON_CACHE_LIMIT: usize = 8 * 1024 * 1024;
 const JSON_RECORD_LIMIT: usize = 4096;
 
 impl LogLineMeta {
-    fn format_json(&mut self, line: &str, budget: &mut usize) {
+    fn format_json(
+        &mut self,
+        line: &str,
+        budget: &mut usize,
+        format_command: &[String],
+        format_broken: &mut bool,
+    ) {
         if self.checked_json {
             return;
         }
@@ -78,12 +84,27 @@ impl LogLineMeta {
         if !payload.starts_with(['{', '[']) {
             return;
         }
-        let Ok(value) = serde_json::from_str::<serde_json::Value>(payload) else {
+        if *format_broken {
             return;
-        };
-        // The input and parser depth limits also bound the temporary output.
-        let Ok(pretty) = serde_json::to_string_pretty(&value) else {
-            return;
+        }
+        let pretty = if format_command.is_empty() {
+            let Ok(value) = serde_json::from_str::<serde_json::Value>(payload) else {
+                return;
+            };
+            // The input and parser depth limits also bound the temporary output.
+            let Ok(pretty) = serde_json::to_string_pretty(&value) else {
+                return;
+            };
+            pretty
+        } else {
+            match format_external(format_command, payload) {
+                ExternalFormat::Formatted(pretty) => pretty,
+                ExternalFormat::Invalid => return,
+                ExternalFormat::Missing => {
+                    *format_broken = true;
+                    return;
+                }
+            }
         };
         let timestamp_reserve = self
             .timestamp
@@ -96,6 +117,58 @@ impl LogLineMeta {
         *budget -= charge;
         self.json_charge += charge;
         self.pretty = Some(format!("{}{}", &line[..time_end], pretty));
+    }
+}
+
+enum ExternalFormat {
+    Formatted(String),
+    Invalid,
+    Missing,
+}
+
+fn format_external(command: &[String], payload: &str) -> ExternalFormat {
+    use std::io::Write as _;
+    use std::process::{Command, Stdio};
+    let Some((program, args)) = command.split_first() else {
+        return ExternalFormat::Invalid;
+    };
+    let mut child = match Command::new(program)
+        .args(args.iter().map(|arg| {
+            if arg == "$LINE" {
+                payload
+            } else {
+                arg.as_str()
+            }
+        }))
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+    {
+        Ok(child) => child,
+        Err(_) => return ExternalFormat::Missing,
+    };
+    if !args.iter().any(|arg| arg == "$LINE")
+        && let Some(mut stdin) = child.stdin.take()
+    {
+        // The payload is at most JSON_RECORD_LIMIT bytes, well under the pipe
+        // capacity, so the write finishes even if the tool never reads stdin.
+        stdin.write_all(payload.as_bytes()).ok();
+    }
+    drop(child.stdin.take());
+    match child.wait_with_output() {
+        Ok(output) if output.status.success() => {
+            let Ok(text) = String::from_utf8(output.stdout) else {
+                return ExternalFormat::Invalid;
+            };
+            let text = text.trim_end();
+            if text.is_empty() {
+                ExternalFormat::Invalid
+            } else {
+                ExternalFormat::Formatted(text.to_owned())
+            }
+        }
+        _ => ExternalFormat::Invalid,
     }
 }
 
@@ -147,7 +220,12 @@ impl LogsView {
         self.line_meta
             .resize_with(self.view.lines.len(), LogLineMeta::default);
         for (line, meta) in self.view.lines.iter().zip(self.line_meta.iter_mut()) {
-            meta.format_json(line, &mut self.json_budget);
+            meta.format_json(
+                line,
+                &mut self.json_budget,
+                &self.format_command,
+                &mut self.format_broken,
+            );
         }
     }
 
@@ -161,7 +239,12 @@ impl LogsView {
             line.replace_range(*start..start + timestamp.len(), "");
         }
         if self.json {
-            meta.format_json(&line, &mut self.json_budget);
+            meta.format_json(
+                &line,
+                &mut self.json_budget,
+                &self.format_command,
+                &mut self.format_broken,
+            );
         }
         // Equal timestamps keep their arrival order. Missing timestamps use
         // the newest known time, or the arrival time if no time is known.
