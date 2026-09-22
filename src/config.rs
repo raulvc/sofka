@@ -356,6 +356,7 @@ pub struct FleetConfig {
 /// json_view = "raw"  # how JSON lines start: raw, record, or pretty (J cycles)
 /// record_time_format = "%b %d %H:%M:%S%.3f" # optional: strftime for record times
 /// record_time_zone = "utc"                  # utc or local
+/// format_command = ["pino-pretty"]   # J's pretty step pipes records through this argv
 /// ```
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
@@ -381,6 +382,12 @@ pub struct LogsConfig {
     pub record_time_format: Option<String>,
     /// Zone `record_time_format` renders in: `utc` or `local`.
     pub record_time_zone: String,
+    /// External formatter for the pretty step of the logs `J` cycle, as argv
+    /// without a shell (like `ui.notify.command`). The record payload arrives
+    /// on stdin, or as a whole argument wherever a `$LINE` placeholder
+    /// appears. Non-JSON records, non-zero exits, empty or non-UTF-8 output,
+    /// and missing binaries fall back to the raw line.
+    pub format_command: Vec<String>,
 }
 
 impl Default for LogsConfig {
@@ -393,6 +400,7 @@ impl Default for LogsConfig {
             json_view: "raw".into(),
             record_time_format: None,
             record_time_zone: "utc".into(),
+            format_command: Vec::new(),
         }
     }
 }
@@ -2396,6 +2404,21 @@ mod tests {
     fn logging_rotation_floor_survives_a_zero() {
         let cfg: Config = toml::from_str("[logging]\nmax_size_mb = 0\n").unwrap();
         assert_eq!(cfg.logging.max_bytes(), 64 * 1024);
+    }
+
+    #[test]
+    fn parses_logs_format_command() {
+        let toml = r#"
+            [logs]
+            format_command = ["pino-pretty", "--single-line"]
+        "#;
+        let cfg: Config = toml::from_str(toml).unwrap();
+        assert_eq!(cfg.logs.format_command, ["pino-pretty", "--single-line"]);
+        let cfg: Config =
+            toml::from_str("[logs]\nformat_command = [\"jq\", \".\", \"$LINE\"]\n").unwrap();
+        assert_eq!(cfg.logs.format_command, ["jq", ".", "$LINE"]);
+        let cfg: Config = toml::from_str("").unwrap();
+        assert!(cfg.logs.format_command.is_empty());
     }
 
     #[test]
