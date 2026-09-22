@@ -35224,6 +35224,34 @@ async fn log_json_records_format_without_a_press_when_enabled_from_config() {
 }
 
 #[tokio::test]
+async fn log_json_formats_records_larger_than_the_builtin_limit() {
+    let (mut app, _rx) = test_app();
+    app.mode = Mode::Logs;
+    app.logs.format_command = vec!["tr".into(), "a-z".into(), "A-Z".into()];
+    let big = format!(r#"[app] {{"stacktrace":"{}"}}"#, "x".repeat(8192));
+    assert!(big.len() > 4096);
+    shortcut_log_lines(&mut app, vec![big]);
+    app.handle_key(press(KeyCode::Char('J'))).unwrap();
+    assert!(app.logs.display_line(0).contains(r#""STACKTRACE":"#));
+}
+
+#[tokio::test]
+async fn log_json_huge_records_survive_a_tool_that_never_reads_stdin() {
+    let (mut app, _rx) = test_app();
+    app.mode = Mode::Logs;
+    app.logs.format_command = vec!["false".into()];
+    let huge = format!(r#"[app] {{"stacktrace":"{}"}}"#, "x".repeat(200_000));
+    assert!(huge.len() > 64 * 1024);
+    shortcut_log_lines(&mut app, vec![huge]);
+    app.handle_key(press(KeyCode::Char('J'))).unwrap();
+    assert!(
+        app.logs
+            .display_line(0)
+            .starts_with(r#"[app] {"stacktrace":"xx"#)
+    );
+}
+
+#[tokio::test]
 async fn log_json_shortcut_formats_records_through_the_configured_command() {
     let (mut app, _rx) = test_app();
     app.mode = Mode::Logs;
