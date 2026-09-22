@@ -372,6 +372,8 @@ pub struct LogsConfig {
     /// The record payload arrives on stdin, or as a whole argument wherever a
     /// `$LINE` placeholder appears. Non-JSON records, non-zero exits, empty
     /// or non-UTF-8 output, and missing binaries fall back to the raw line.
+    /// Configuring it starts log views with formatting already on (`J` turns
+    /// it off for the session).
     pub format_command: Vec<String>,
 }
 
