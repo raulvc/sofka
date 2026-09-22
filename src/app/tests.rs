@@ -35212,6 +35212,18 @@ async fn log_json_shortcut_formats_primitive_arrays_with_trailing_whitespace() {
 }
 
 #[tokio::test]
+async fn log_json_records_format_without_a_press_when_enabled_from_config() {
+    let (mut app, _rx) = test_app();
+    app.mode = Mode::Logs;
+    app.logs.json = true;
+    app.logs.format_command = vec!["tr".into(), "a-z".into(), "A-Z".into()];
+    shortcut_log_lines(&mut app, vec![r#"[app] {"msg":"hi"}"#.into()]);
+    assert_eq!(app.logs.display_line(0), r#"[app] {"MSG":"HI"}"#);
+    app.handle_key(press(KeyCode::Char('J'))).unwrap();
+    assert_eq!(app.logs.display_line(0), r#"[app] {"msg":"hi"}"#);
+}
+
+#[tokio::test]
 async fn log_json_shortcut_formats_records_through_the_configured_command() {
     let (mut app, _rx) = test_app();
     app.mode = Mode::Logs;
