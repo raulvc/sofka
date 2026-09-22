@@ -567,6 +567,7 @@ async fn run_main(args: Args, proxy_warnings: Vec<String>) -> Result<()> {
     // Seed the session toggle once; later `F` presses (and per-context config
     // reloads) don't fight the user's in-session choice.
     app.logs.fullscreen = cfg.logs.fullscreen;
+    app.logs.format_command = cfg.logs.format_command.clone();
     app.fleet_cfg = cfg.fleet.clone();
     app.forwards_cfg = cfg.forwards.clone();
     app.notify_cfg = cfg.notify.clone();
