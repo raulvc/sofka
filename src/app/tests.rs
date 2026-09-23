@@ -2109,6 +2109,61 @@ async fn port_forward_picker_select_port_starts_forward() {
     assert_eq!(app.port_forwards[0].target, "svc/web");
 }
 
+#[tokio::test]
+async fn port_forward_picker_x_stops_the_running_forward() {
+    let listener = std::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0)).unwrap();
+    let port = listener.local_addr().unwrap().port();
+    drop(listener);
+    let (mut app, _rx) = test_app();
+    app.switch_kind("services");
+    apply(
+        &mut app,
+        json!({
+            "apiVersion": "v1", "kind": "Service",
+            "metadata": {"name": "web", "namespace": "default", "resourceVersion": "1"},
+            "spec": {"ports": [{"port": port}]}
+        }),
+    );
+    app.table_state.select(Some(0));
+    app.request_port_forward();
+    app.handle_key(press(KeyCode::Enter)).unwrap();
+    assert_eq!(app.port_forwards.len(), 1);
+    app.request_port_forward();
+    assert!(app.picker_forward_active(&format!("{port}:{port}")));
+    app.handle_key(press(KeyCode::Char('x'))).unwrap();
+    assert!(app.port_forwards.is_empty());
+    assert!(app.flash.contains("stopped port-forward"), "{}", app.flash);
+    assert_eq!(app.mode, Mode::PortForwardPicker);
+    assert!(!app.picker_forward_active(&format!("{port}:{port}")));
+}
+
+#[tokio::test]
+async fn port_forward_picker_x_without_a_running_forward_is_a_noop() {
+    let listener = std::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0)).unwrap();
+    let port = listener.local_addr().unwrap().port();
+    drop(listener);
+    let (mut app, _rx) = test_app();
+    app.switch_kind("services");
+    apply(
+        &mut app,
+        json!({
+            "apiVersion": "v1", "kind": "Service",
+            "metadata": {"name": "web", "namespace": "default", "resourceVersion": "1"},
+            "spec": {"ports": [{"port": port}]}
+        }),
+    );
+    app.table_state.select(Some(0));
+    app.request_port_forward();
+    app.handle_key(press(KeyCode::Char('x'))).unwrap();
+    assert!(app.port_forwards.is_empty());
+    assert!(
+        app.flash.contains("no active port-forward"),
+        "{}",
+        app.flash
+    );
+    assert_eq!(app.mode, Mode::PortForwardPicker);
+}
+
 fn occupy_forward_port() -> (std::net::TcpListener, Option<std::net::TcpListener>) {
     let ipv4 = std::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0)).unwrap();
     let port = ipv4.local_addr().unwrap().port();
