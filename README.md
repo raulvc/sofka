@@ -1,3 +1,18 @@
+<!-- FORK:BEGIN — personal fork notes; keep this block above everything else -->
+
+> **Personal fork** of [nklmilojevic/sofka](https://github.com/nklmilojevic/sofka),
+> regularly rebased onto upstream. Extras over upstream:
+>
+> - **External log formatter for the logs view** —
+>   `[logs] format_command = ["cor", "--color", "always"]` pipes every JSON record
+>   through a local tool (`cor`, `jq`, `pino-pretty`, …), ANSI colors included. On
+>   by default once configured; `J` toggles it. Oversized or failing records fall
+>   back to the raw line.
+> - **`x` stops a port-forward from the `f` picker** — `● ` marks the mapping
+>   whose forward is running; no detour through `:pf`.
+
+<!-- FORK:END -->
+
 # sofka
 
 A Kubernetes TUI written in Rust, on [`kube-rs`](https://kube.rs) and
