@@ -2431,6 +2431,59 @@ fn occupy_port(busy: &BusyPorts, port: u16) {
         .extend(LOOPBACKS.map(|address| (address, port)));
 }
 
+#[tokio::test]
+async fn port_forward_picker_x_stops_the_running_forward() {
+    let port = 8080;
+    let (mut app, _rx) = test_app();
+    stub_busy_ports(&mut app);
+    app.switch_kind("services");
+    apply(
+        &mut app,
+        json!({
+            "apiVersion": "v1", "kind": "Service",
+            "metadata": {"name": "web", "namespace": "default", "resourceVersion": "1"},
+            "spec": {"ports": [{"port": port}]}
+        }),
+    );
+    app.table_state.select(Some(0));
+    app.handle_key(press(KeyCode::Char('f'))).unwrap();
+    app.handle_key(press(KeyCode::Enter)).unwrap();
+    assert_eq!(app.port_forwards.len(), 1);
+    app.handle_key(press(KeyCode::Char('f'))).unwrap();
+    assert!(app.picker_forward_active(&format!("{port}:{port}")));
+    app.handle_key(press(KeyCode::Char('x'))).unwrap();
+    assert!(app.port_forwards.is_empty());
+    assert!(app.flash.contains("stopped port-forward"), "{}", app.flash);
+    assert_eq!(app.mode, Mode::PortForwardPicker);
+    assert!(!app.picker_forward_active(&format!("{port}:{port}")));
+}
+
+#[tokio::test]
+async fn port_forward_picker_x_without_a_running_forward_is_a_noop() {
+    let port = 8080;
+    let (mut app, _rx) = test_app();
+    stub_busy_ports(&mut app);
+    app.switch_kind("services");
+    apply(
+        &mut app,
+        json!({
+            "apiVersion": "v1", "kind": "Service",
+            "metadata": {"name": "web", "namespace": "default", "resourceVersion": "1"},
+            "spec": {"ports": [{"port": port}]}
+        }),
+    );
+    app.table_state.select(Some(0));
+    app.handle_key(press(KeyCode::Char('f'))).unwrap();
+    app.handle_key(press(KeyCode::Char('x'))).unwrap();
+    assert!(app.port_forwards.is_empty());
+    assert!(
+        app.flash.contains("no active port-forward"),
+        "{}",
+        app.flash
+    );
+    assert_eq!(app.mode, Mode::PortForwardPicker);
+}
+
 #[test]
 fn default_port_binder_reports_a_held_port_in_use() {
     let listener = std::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0)).unwrap();
