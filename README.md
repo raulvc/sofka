@@ -1,7 +1,7 @@
 <!-- FORK:BEGIN — personal fork notes; keep this block above everything else -->
 
-> **Personal fork** of [nklmilojevic/sofka](https://github.com/nklmilojevic/sofka),
-> regularly rebased onto upstream. Extras over upstream:
+> **Personal fork** of [nklmilojevic/sofka](https://github.com/nklmilojevic/sofka).
+> Extras over upstream:
 >
 > - **External log formatter for the logs view** —
 >   `[logs] format_command = ["cor", "--color", "always"]` pipes every JSON record
