@@ -468,6 +468,7 @@ impl App {
                 self.picker_page_items,
                 false,
             ),
+            (Some(Action::Toggle), _) => self.stop_picker_forward(),
             (Some(Action::Accept | Action::Edit), _) => {
                 let Some(i) = self.pf_picker_state.selected() else {
                     return;
@@ -513,5 +514,51 @@ impl App {
             }
             _ => {}
         }
+    }
+
+    /// `x` in the port-forward picker: stop the running forward that matches
+    /// the selected mapping without a detour through `:pf`.
+    pub(super) fn stop_picker_forward(&mut self) {
+        let Some(i) = self.pf_picker_state.selected() else {
+            return;
+        };
+        let Some(item) = self.pf_picker_items.get(i) else {
+            return;
+        };
+        if item == "Custom…" {
+            return;
+        }
+        let ports = item.split_whitespace().next().unwrap_or(&item).to_string();
+        let Some((ns, name)) = self.pf_picker_target.clone() else {
+            return;
+        };
+        let target = forward_target(&self.kind_plural, &name);
+        let Some(i) = self
+            .port_forwards
+            .iter()
+            .position(|pf| pf.ns == ns && pf.target == target && pf.ports == ports)
+        else {
+            self.flash_warn(&format!("no active port-forward for {ports}"));
+            return;
+        };
+        let pf = self.port_forwards.remove(i); // dropped -> Drop kills the child
+        self.flash = format!("stopped port-forward {}", pf.label());
+        self.flash_err = false;
+    }
+
+    /// Does the picker mapping in `label` currently have a running forward?
+    /// Drives the `● ` marker in the picker, matching the `:pf` view.
+    pub(crate) fn picker_forward_active(&self, label: &str) -> bool {
+        if label == "Custom…" {
+            return false;
+        }
+        let ports = label.split_whitespace().next().unwrap_or(label);
+        let Some((ns, name)) = self.pf_picker_target.as_ref() else {
+            return false;
+        };
+        let target = forward_target(&self.kind_plural, name);
+        self.port_forwards
+            .iter()
+            .any(|pf| &pf.ns == ns && pf.target == target && pf.ports == ports)
     }
 }

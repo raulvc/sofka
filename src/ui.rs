@@ -3385,7 +3385,16 @@ fn draw_port_forward_picker(frame: &mut Frame, app: &mut App, area: Rect) {
             } else {
                 theme::green()
             };
-            Text::from(Span::styled(label.as_str(), Style::default().fg(color)))
+            // `● ` marks a mapping with a live forward, matching `:pf`.
+            let marker = if app.picker_forward_active(label) {
+                "● "
+            } else {
+                ""
+            };
+            Text::from(Line::from(vec![
+                Span::styled(marker, Style::default().fg(color)),
+                Span::styled(label.as_str(), Style::default().fg(color)),
+            ]))
         })
         .collect();
     app.picker_page_items = render_popup_list(
