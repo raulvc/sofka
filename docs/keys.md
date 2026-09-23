@@ -147,6 +147,7 @@ See [Node drain options](features.md#node-drain-options) for defaults and limits
 | -------------------- | --------------------------------------------------------------------------- |
 | `enter`              | start the selected mapping, or ask for remote and local ports for "Custom…" |
 | `e`                  | edit only the local port of a declared mapping                              |
+| `x`                  | stop the running forward for the selected mapping (`● ` rows)               |
 | `j` / `k`, `↓` / `↑` | select a mapping                                                            |
 | `PgDn` / `PgUp`      | move one page down / up                                                     |
 | `esc` / `q`          | close the picker                                                            |

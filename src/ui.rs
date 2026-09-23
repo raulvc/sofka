@@ -3860,7 +3860,16 @@ fn draw_port_forward_picker(frame: &mut Frame, app: &mut App, area: Rect) {
             } else {
                 theme::green()
             };
-            let mut spans = vec![Span::styled(label.as_str(), Style::default().fg(color))];
+            // `● ` marks a mapping with a live forward, matching `:pf`.
+            let marker = if app.picker_forward_active(label) {
+                "● "
+            } else {
+                ""
+            };
+            let mut spans = vec![
+                Span::styled(marker, Style::default().fg(color)),
+                Span::styled(label.as_str(), Style::default().fg(color)),
+            ];
             if app.pf_picker_in_use.get(i).copied().unwrap_or(false) {
                 spans.push(Span::styled(
                     "  in use",
