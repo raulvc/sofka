@@ -28,7 +28,7 @@
 >   colors = { canary = "yellow" }   # skin swatch or #rrggbb; others keep the row color
 >   ```
 >
-> Install: `cargo install --git https://github.com/raulvc/sofka --locked --force sofka`
+> Install (linux x86_64): `curl -sSL https://github.com/raulvc/sofka/releases/download/v0.29.2-fork.1/sofka-v0.29.2-fork.1-x86_64-unknown-linux-gnu.tar.gz | tar -xz -C ~/.local/bin`
 
 <!-- FORK:END -->
 
