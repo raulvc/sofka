@@ -112,6 +112,9 @@ pub struct UserColumn {
     pub condition_match: ConditionMatch,
     /// The output field for a condition lookup. `Condition` reads `status`.
     pub condition_field: Option<String>,
+    /// Per-value foreground colors for text cells: exact cell value → color.
+    /// Empty = every value keeps the row's color.
+    pub colors: HashMap<String, crate::theme::CellColor>,
 }
 
 /// A compiled per-kind view.
@@ -421,6 +424,21 @@ pub fn compile(
                     None
                 }
             };
+            let mut colors = HashMap::new();
+            if let Some(map) = &c.colors {
+                for (value, spec) in map {
+                    match crate::theme::parse_color_spec(spec) {
+                        Some(color) => {
+                            colors.insert(value.clone(), color);
+                        }
+                        None => warnings.push(format!(
+                            "views.\"{key}\": column {header}: unknown color '{spec}' \
+                             for value '{value}' (expected a skin swatch name or #rrggbb); \
+                             ignored"
+                        )),
+                    }
+                }
+            }
             columns.push(UserColumn {
                 header,
                 pointer,
@@ -430,6 +448,7 @@ pub fn compile(
                 align,
                 condition_match: ConditionMatch::Type,
                 condition_field: None,
+                colors,
             });
         }
         let mut replace = cfg.replace;
@@ -1087,6 +1106,7 @@ pub fn printer_columns_view(crd: &Value, version: &str) -> Option<View> {
                     align: None,
                     condition_match,
                     condition_field,
+                    colors: HashMap::new(),
                 });
             }
             let pointer = json_path_to_pointer(json_path)?;
@@ -1099,6 +1119,7 @@ pub fn printer_columns_view(crd: &Value, version: &str) -> Option<View> {
                 align: None,
                 condition_match: ConditionMatch::Type,
                 condition_field: None,
+                colors: HashMap::new(),
             })
         })
         .collect();
@@ -1307,12 +1328,48 @@ mod tests {
             align: None,
             condition_match: ConditionMatch::Type,
             condition_field: None,
+            colors: Default::default(),
         }
     }
 
     fn compile_toml(text: &str) -> (HashMap<String, View>, Vec<String>) {
         let cfg: crate::config::Config = toml::from_str(text).unwrap();
         compile(&cfg.views)
+    }
+
+    #[test]
+    fn column_colors_parse_and_unknown_values_warn() {
+        let (views, warnings) = compile_toml(
+            r##"
+            [[views."v1/pods".columns]]
+            name = "KIND"
+            path = "/metadata/labels/routing"
+            colors = { canary = "yellow", hotfix = "#ff00ff" }
+        "##,
+        );
+        assert!(warnings.is_empty(), "{warnings:?}");
+        let colors = &views["v1/pods"].columns[0].colors;
+        assert_eq!(colors.len(), 2);
+        assert_eq!(
+            colors["canary"],
+            crate::theme::CellColor::Swatch("yellow".into())
+        );
+        assert_eq!(
+            colors["hotfix"],
+            crate::theme::CellColor::Fixed(ratatui::style::Color::Rgb(255, 0, 255))
+        );
+
+        let (views, warnings) = compile_toml(
+            r##"
+            [[views."v1/pods".columns]]
+            name = "KIND"
+            path = "/metadata/labels/routing"
+            colors = { canary = "neon" }
+        "##,
+        );
+        assert_eq!(warnings.len(), 1, "{warnings:?}");
+        assert!(warnings[0].contains("unknown color 'neon'"), "{warnings:?}");
+        assert!(views["v1/pods"].columns[0].colors.is_empty());
     }
 
     #[test]

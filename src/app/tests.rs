@@ -4319,6 +4319,75 @@ async fn adjacent_reverse_rules_resolve_a_qualified_source_group() {
     );
 }
 
+#[tokio::test]
+async fn view_column_colors_tint_matching_values() {
+    use ratatui::{Terminal, backend::TestBackend};
+    let (mut app, _rx) = test_app();
+    let cfg: crate::config::Config = toml::from_str(
+        r##"
+        [[views."v1/pods".columns]]
+        name = "KIND"
+        path = "/metadata/labels/routing"
+        colors = { canary = "yellow", hotfix = "#ff00ff" }
+        "##,
+    )
+    .unwrap();
+    let (views, warnings) = crate::views::compile(&cfg.views);
+    assert!(warnings.is_empty(), "{warnings:?}");
+    app.user_views = views;
+    app.switch_kind("pods");
+    for (name, routing) in [
+        ("pod-a", "canary"),
+        ("pod-b", "stable"),
+        ("pod-c", "hotfix"),
+    ] {
+        apply(
+            &mut app,
+            json!({"apiVersion":"v1","kind":"Pod","metadata":{"name":name,"namespace":"default","labels":{"routing":routing}},
+            "spec":{"nodeName":"node-3","containers":[{"name":"app"}]},
+            "status":{"phase":"Running","containerStatuses":[{"ready":true,"state":{"running":{}}}],
+            "conditions":[{"type":"Ready","status":"True"}]}}),
+        );
+    }
+    // The selected row's highlight overrides per-cell fg (as it does for the
+    // built-in status colors), so nothing is selected for this check.
+    app.table_state.select(None);
+    let mut terminal = Terminal::new(TestBackend::new(140, 20)).unwrap();
+    terminal.draw(|f| crate::ui::draw(f, &mut app)).unwrap();
+    let cells = terminal.backend().buffer().content().to_vec();
+    let chars: Vec<char> = cells
+        .iter()
+        .map(|c| c.symbol().chars().next().unwrap_or(' '))
+        .collect();
+    let text: String = chars.iter().collect();
+    // Buffer cells hold one glyph each, but `find` answers in bytes; map the
+    // match back through the char positions before indexing cells.
+    let fg_of = |word: &str| {
+        text.find(word)
+            .map(|byte_i| cells[text[..byte_i].chars().count()].style().fg)
+    };
+    for word in ["canary", "hotfix", "stable"] {
+        let byte_i = text.find(word).unwrap();
+        let cell_i = text[..byte_i].chars().count();
+        eprintln!(
+            "word {word}: cell {cell_i} (row {} col {}) symbol {:?} fg {:?}",
+            cell_i / 140,
+            cell_i % 140,
+            cells[cell_i].symbol(),
+            cells[cell_i].style().fg
+        );
+    }
+    assert_eq!(fg_of("canary"), Some(Some(crate::theme::yellow())));
+    assert_eq!(
+        fg_of("hotfix"),
+        Some(Some(ratatui::style::Color::Rgb(255, 0, 255)))
+    );
+    assert_eq!(
+        fg_of("stable"),
+        Some(Some(crate::theme::row_color("Running")))
+    );
+}
+
 fn secret_store_views(app: &mut App) {
     app.cluster
         .register_kind("external-secrets.io", "SecretStore", "secretstores", true);
@@ -14696,6 +14765,7 @@ async fn user_view_wins_over_printer_columns() {
                 align: None,
                 condition_match: crate::views::ConditionMatch::Type,
                 condition_field: None,
+                colors: Default::default(),
             }],
             ..Default::default()
         })),

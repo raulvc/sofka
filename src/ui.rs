@@ -1191,6 +1191,12 @@ fn draw_table(frame: &mut Frame, app: &mut App, area: Rect) {
                 .and_then(|si| app.view_spec().metric_at(si))
         })
         .collect();
+    let cell_colors: Vec<_> = (0..headers.len())
+        .map(|i| {
+            i.checked_sub(ns_off)
+                .and_then(|si| app.view_spec().color_at(si).cloned())
+        })
+        .collect();
 
     let count = app.row_count();
     let visible_rows = area.height.saturating_sub(3).max(1) as usize;
@@ -1423,6 +1429,17 @@ fn draw_table(frame: &mut Frame, app: &mut App, area: Rect) {
                                 .and_then(|v| band.severity(v))
                                 .map(theme::severity_fg)
                                 .unwrap_or(row_color)
+                        };
+                        c.into_cell_aligned(align).style(Style::default().fg(color))
+                    } else if let Some(color) = cell_colors[i]
+                        .as_ref()
+                        .and_then(|map| map.get(c.as_str().trim()))
+                    {
+                        let color = match color {
+                            crate::theme::CellColor::Fixed(color) => *color,
+                            crate::theme::CellColor::Swatch(name) => {
+                                theme::swatch_color(name).unwrap_or(row_color)
+                            }
                         };
                         c.into_cell_aligned(align).style(Style::default().fg(color))
                     } else {

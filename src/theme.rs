@@ -74,7 +74,18 @@ macro_rules! palette_swatches {
                 }
                 true
             }
+
+            /// Look up one swatch by name.
+            fn get(&self, key: &str) -> Option<Color> {
+                match key {
+                    $(stringify!($field) => Some(self.$field),)+
+                    _ => None,
+                }
+            }
         }
+
+        /// Every swatch name, for config validation.
+        pub const SWATCH_NAMES: &[&str] = &[$(stringify!($field),)+];
 
         $(pub fn $field() -> Color {
             palette().$field
@@ -507,6 +518,33 @@ pub fn accent() -> Style {
     Style::default().fg(teal())
 }
 
+/// A per-value color for custom table columns: a skin swatch name (resolved
+/// at render time so a live `:skin` switch re-colors mapped values) or a
+/// literal `#rrggbb` that bypasses the skin.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CellColor {
+    Swatch(String),
+    Fixed(Color),
+}
+
+/// Parse a color spec as accepted by per-column `colors` maps: `#rrggbb`
+/// hex or a skin swatch name (e.g. `yellow`).
+pub fn parse_color_spec(spec: &str) -> Option<CellColor> {
+    let spec = spec.trim();
+    if let Some(color) = parse_hex(spec) {
+        return Some(CellColor::Fixed(color));
+    }
+    let name = spec.to_ascii_lowercase();
+    SWATCH_NAMES
+        .contains(&name.as_str())
+        .then(|| CellColor::Swatch(name))
+}
+
+/// Resolve a swatch name against the active palette.
+pub fn swatch_color(name: &str) -> Option<Color> {
+    palette().get(name)
+}
+
 /// Colorize a status-like string (pod phase, node condition, etc.) for the
 /// STATUS badge itself. Terminal/faded states (Succeeded, Terminating) match
 /// their [`row_color`] counterpart so the badge blends into the already-faded
@@ -724,6 +762,16 @@ mod tests {
         assert_ne!(status_color("Pending"), row_color("Pending"));
         assert_eq!(status_color("Ready,SchedulingDisabled"), yellow());
         assert_eq!(status_color("NotReady,SchedulingDisabled"), red());
+        assert_eq!(
+            parse_color_spec("yellow"),
+            Some(CellColor::Swatch("yellow".into()))
+        );
+        assert_eq!(
+            parse_color_spec(" #FF00FF "),
+            Some(CellColor::Fixed(Color::Rgb(255, 0, 255)))
+        );
+        assert_eq!(parse_color_spec("neon"), None);
+        assert_eq!(swatch_color("yellow"), Some(yellow()));
         assert_eq!(status_color("Unknown,SchedulingDisabled"), overlay1());
     }
 

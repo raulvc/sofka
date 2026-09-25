@@ -903,6 +903,18 @@ pub struct ViewColumnConfig {
     pub width: Option<u16>,
     /// Cell alignment: `left` (default), `center`, `right`.
     pub align: Option<String>,
+    /// Per-value foreground colors for text cells: exact cell value → color
+    /// spec (a skin swatch name or `#rrggbb`). Values not listed keep the
+    /// row's color. Applies to `text` columns; unknown colors warn and are
+    /// ignored.
+    ///
+    /// ```toml
+    /// [[views."v1/pods".columns]]
+    /// name = "KIND"
+    /// path = "/metadata/labels/routing"
+    /// colors = { canary = "yellow", hotfix = "#ff00ff" }
+    /// ```
+    pub colors: Option<std::collections::BTreeMap<String, String>>,
 }
 
 /// Skin selection. `name` picks a built-in palette (see
