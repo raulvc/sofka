@@ -27,6 +27,8 @@
 >   path = "/metadata/labels/kind"
 >   colors = { canary = "yellow" }   # skin swatch or #rrggbb; others keep the row color
 >   ```
+>
+> Install: `cargo install --git https://github.com/raulvc/sofka --locked --force sofka`
 
 <!-- FORK:END -->
 
