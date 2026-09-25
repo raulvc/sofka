@@ -10,6 +10,18 @@
 >   back to the raw line.
 > - **`x` stops a port-forward from the `f` picker** — `● ` marks the mapping
 >   whose forward is running; no detour through `:pf`.
+> - **Configurable table columns** — custom columns can sit first, and cell
+>   values get per-column colors:
+>
+>   ```toml
+>   [views."v1/pods"]
+>   replace = true
+>
+>   [[views."v1/pods".columns]]
+>   name = "KIND"
+>   path = "/metadata/labels/kind"
+>   colors = { canary = "yellow" }   # skin swatch or #rrggbb; others keep the row color
+>   ```
 
 <!-- FORK:END -->
 
