@@ -728,6 +728,7 @@ pub fn build_spec(
                 condition_field: None,
                 default: None,
                 regex: None,
+                colors: Default::default(),
             }));
         }
     }
@@ -813,6 +814,17 @@ impl ViewSpec {
     /// Whether the column at `idx` is a curated `used/limit (N%)` cell.
     pub fn usage_at(&self, idx: usize) -> bool {
         self.columns.get(idx).is_some_and(|c| c.usage.is_some())
+    }
+
+    /// Per-value color map of a custom column, if it has one.
+    pub fn color_at(
+        &self,
+        idx: usize,
+    ) -> Option<&std::collections::HashMap<String, crate::theme::CellColor>> {
+        match &self.columns.get(idx)?.source {
+            SpecSource::User(uc) if !uc.colors.is_empty() => Some(&uc.colors),
+            _ => None,
+        }
     }
 
     pub fn metric(&self, header: &str) -> Option<MetricColumn> {
@@ -4397,6 +4409,7 @@ mod tests {
             condition_field: None,
             default: None,
             regex: None,
+            colors: Default::default(),
         }
     }
 
