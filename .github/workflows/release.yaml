@@ -26,7 +26,7 @@ jobs:
       - name: Validate tag and Cargo version
         run: |
           version="${RELEASE_TAG#v}"
-          if ! [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          if ! [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-fork\.[0-9]+)?$ ]]; then
             echo "::error::'$RELEASE_TAG' is not a release tag like v0.2.0"
             exit 1
           fi
@@ -98,6 +98,8 @@ jobs:
   # 6-hourly cron (which stays as the fallback). Needs TAP_GITHUB_TOKEN, a
   # fine-grained PAT scoped to homebrew-sofka with Actions read/write.
   homebrew-bump:
+    # Fork releases skip the upstream homebrew tap (no TAP_GITHUB_TOKEN here).
+    if: ${{ !contains(github.event.release.tag_name, '-fork') }}
     needs: upload-assets
     runs-on: ubuntu-latest
     env:
@@ -111,6 +113,8 @@ jobs:
             -f tag="$RELEASE_TAG"
 
   crates-publish:
+    # Fork releases skip crates.io (the crate is owned upstream).
+    if: ${{ !contains(github.event.release.tag_name, '-fork') }}
     needs: upload-assets
     runs-on: ubuntu-latest
     environment: release
