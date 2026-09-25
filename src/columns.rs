@@ -678,6 +678,7 @@ pub fn build_spec(
                 condition_field: None,
                 default: None,
                 regex: None,
+                colors: Default::default(),
             }));
         }
     }
@@ -755,6 +756,17 @@ impl ViewSpec {
                 crate::views::ColumnKind::Metric(metric) => Some(metric),
                 _ => None,
             },
+            _ => None,
+        }
+    }
+
+    /// Per-value color map of a custom column, if it has one.
+    pub fn color_at(
+        &self,
+        idx: usize,
+    ) -> Option<&std::collections::HashMap<String, crate::theme::CellColor>> {
+        match &self.columns.get(idx)?.source {
+            SpecSource::User(uc) if !uc.colors.is_empty() => Some(&uc.colors),
             _ => None,
         }
     }
@@ -4171,6 +4183,7 @@ mod tests {
             condition_field: None,
             default: None,
             regex: None,
+            colors: Default::default(),
         }
     }
 

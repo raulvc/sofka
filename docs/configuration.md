@@ -477,6 +477,17 @@ horizontal scrolling, such as `pin = ["NAME", "STATUS"]`. Without it, NAMESPACE
 and NAME stay fixed; `pin = []` fixes none. See
 [pinned columns](views.md#pinned-columns).
 
+Text path columns accept a `colors` map: exact cell value → foreground color,
+given as a skin swatch name or `#rrggbb`. Values not listed keep the row's
+color; unknown colors warn and are ignored.
+
+```toml
+[[views."v1/pods".columns]]
+name = "KIND"
+path = "/metadata/labels/routing"
+colors = { canary = "yellow", hotfix = "#ff00ff" }
+```
+
 ## Other sections
 
 Each of these is documented where the feature itself is:
