@@ -3,11 +3,16 @@
 > **Personal fork** of [nklmilojevic/sofka](https://github.com/nklmilojevic/sofka).
 > Extras over upstream:
 >
-> - **External log formatter for the logs view** —
->   `[logs] format_command = ["cor", "--color", "always"]` pipes every JSON record
->   through a local tool (`cor`, `jq`, `pino-pretty`, …), ANSI colors included. On
->   by default once configured; `J` toggles it. Oversized or failing records fall
->   back to the raw line.
+> - **External log formatter (native)** — pipe every JSON log record through a
+>   local tool (`cor`, `jq`, `pino-pretty`, …):
+>
+>   ```toml
+>   [logs]
+>   format_command = ["cor", "--color", "always"]   # on by default; `J` toggles
+>   ```
+>
+>   ANSI colors pass through; oversized or failing records fall back to the
+>   raw line.
 > - **`x` stops a port-forward from the `f` picker** — `● ` marks the mapping
 >   whose forward is running; no detour through `:pf`.
 > - **Configurable table columns** — custom columns can sit first, and cell
