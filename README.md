@@ -29,7 +29,7 @@
 >   ```
 >
 > Install from a release binary (fastest, linux x86_64):
-> `curl -sSL https://github.com/raulvc/sofka/releases/download/v0.29.2-fork.1/sofka-v0.29.2-fork.1-x86_64-unknown-linux-gnu.tar.gz | tar -xz -C ~/.local/bin`
+> `curl -sSL https://github.com/raulvc/sofka/releases/download/v0.29.3-fork.1/sofka-v0.29.3-fork.1-x86_64-unknown-linux-gnu.tar.gz | tar -xz -C ~/.local/bin`
 >
 > Or build from source (any platform, tracks `main` between releases):
 > `cargo install --git https://github.com/raulvc/sofka --locked --force sofka`
