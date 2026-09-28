@@ -543,7 +543,16 @@ impl Catalog {
 fn current_version() -> Option<&'static Version> {
     static CURRENT: std::sync::OnceLock<Option<Version>> = std::sync::OnceLock::new();
     CURRENT
-        .get_or_init(|| Version::parse(env!("CARGO_PKG_VERSION")).ok())
+        .get_or_init(|| {
+            // A fork release carries a `-fork.N` prerelease tag, and catalog
+            // requirements like ^0.29 never match a prerelease — compare with
+            // the base version instead.
+            let mut version = Version::parse(env!("CARGO_PKG_VERSION")).ok()?;
+            if version.pre.as_str().starts_with("fork") {
+                version.pre = semver::Prerelease::EMPTY;
+            }
+            Some(version)
+        })
         .as_ref()
 }
 
