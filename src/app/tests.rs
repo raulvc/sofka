@@ -16307,14 +16307,17 @@ async fn column_comparisons_see_updated_cells_not_cached_ones() {
 async fn caret_filter_matches_name_prefixes() {
     let (mut app, _rx) = test_app();
     app.switch_kind("pods");
-    for name in [
-        "go-campaign-context-resolver-1",
-        "go-campaign-context-resolver-2",
-        "other-api",
+    // The third pod's *namespace* starts with the prefix text; an anchored
+    // filter must not match a row through its namespace.
+    for (name, namespace) in [
+        ("go-campaign-context-resolver-1", "default"),
+        ("go-campaign-context-resolver-2", "default"),
+        ("campaign-geostore-worker", "go-campaign-platform"),
+        ("other-api", "default"),
     ] {
         apply(
             &mut app,
-            json!({"apiVersion":"v1","kind":"Pod","metadata":{"name":name,"namespace":"default"},
+            json!({"apiVersion":"v1","kind":"Pod","metadata":{"name":name,"namespace":namespace},
             "spec":{"nodeName":"node-3"},"status":{"phase":"Running"}}),
         );
     }
@@ -16336,8 +16339,11 @@ async fn caret_filter_matches_name_prefixes() {
     );
     retype_filter(&mut app, "^other");
     assert_eq!(row_names(&app), ["other-api"]);
-    retype_filter(&mut app, "^campaign");
+    // "worker" only appears mid-name — prefix matching must not find it.
+    retype_filter(&mut app, "^worker");
     assert_eq!(row_names(&app), Vec::<String>::new());
+    retype_filter(&mut app, "^campaign");
+    assert_eq!(row_names(&app), ["campaign-geostore-worker"]);
 }
 
 #[tokio::test]

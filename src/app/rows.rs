@@ -160,9 +160,10 @@ impl App {
             crate::filter::Pattern::Fuzzy(_) => subseq_mask(pat.text()),
             _ => 0,
         };
-        {
-            // Built into a reused buffer: this used to `format!` a fresh
-            // `String` for every object on every keystroke.
+        // Anchored patterns (`^…`) test the name and cells individually — the
+        // combined "namespace name" haystack would let the namespace satisfy
+        // the anchor for every pod it contains.
+        if !pat.is_anchored() {
             let mut hay = self.hay_buf.borrow_mut();
             self.write_fuzzy_hay(o, &mut hay);
             if subseq_mask(&hay) & pat_mask == pat_mask && self.pattern_matches(pat, &hay) {
