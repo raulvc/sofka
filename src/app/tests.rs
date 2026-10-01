@@ -16304,6 +16304,43 @@ async fn column_comparisons_see_updated_cells_not_cached_ones() {
 }
 
 #[tokio::test]
+async fn caret_filter_matches_name_prefixes() {
+    let (mut app, _rx) = test_app();
+    app.switch_kind("pods");
+    for name in [
+        "go-campaign-context-resolver-1",
+        "go-campaign-context-resolver-2",
+        "other-api",
+    ] {
+        apply(
+            &mut app,
+            json!({"apiVersion":"v1","kind":"Pod","metadata":{"name":name,"namespace":"default"},
+            "spec":{"nodeName":"node-3"},"status":{"phase":"Running"}}),
+        );
+    }
+    retype_filter(&mut app, "^go");
+    assert_eq!(
+        row_names(&app),
+        [
+            "go-campaign-context-resolver-1",
+            "go-campaign-context-resolver-2"
+        ]
+    );
+    retype_filter(&mut app, "/^go/");
+    assert_eq!(
+        row_names(&app),
+        [
+            "go-campaign-context-resolver-1",
+            "go-campaign-context-resolver-2"
+        ]
+    );
+    retype_filter(&mut app, "^other");
+    assert_eq!(row_names(&app), ["other-api"]);
+    retype_filter(&mut app, "^campaign");
+    assert_eq!(row_names(&app), Vec::<String>::new());
+}
+
+#[tokio::test]
 async fn boolean_groups_short_circuit_and_match_operational_queries() {
     let (mut app, _rx) = test_app();
     app.switch_kind("pods");

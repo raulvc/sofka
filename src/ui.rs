@@ -2759,7 +2759,7 @@ fn build_help(app: &App, width: usize) -> (Vec<Line<'static>>, String) {
         } else if action == Action::AutoRefresh && scope == "diff" {
             "toggle refresh (keep the comparison baseline)"
         } else if action == Action::Filter && scope == "table" {
-            "filter rows: text contiguous, a|b either, ~fuzzy; label:text searches labels locally"
+            "filter rows: text contiguous, ^prefix, a|b either, ~fuzzy; label:text searches labels locally"
         } else if scope == "table"
             && (action == Action::AllNamespaces || Action::FAVORITE_NAMESPACES.contains(&action))
         {
@@ -5468,7 +5468,7 @@ fn draw_prompt(frame: &mut Frame, app: &App, area: Rect) {
         }
         Mode::LogFilter => Line::from(vec![
             Span::styled(
-                "log filter (text · /re/ · !invert) /",
+                "log filter (text · ^prefix · /re/ · !invert) /",
                 Style::default()
                     .fg(theme::teal())
                     .add_modifier(Modifier::BOLD),

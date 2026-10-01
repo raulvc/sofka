@@ -683,8 +683,8 @@ fn regex_end(input: &str, start: usize) -> Option<usize> {
     fallback
 }
 
-/// Classify one text term: `/re/` is a regex, `~text` fuzzy, `a|b` either
-/// text, and plain or `"quoted"` text a literal.
+/// Classify one text term: `/re/` is a regex, `~text` fuzzy, `^text` a
+/// prefix match, `a|b` either text, and plain or `"quoted"` text a literal.
 fn pattern(tok: &str) -> Result<Pattern, String> {
     if let Some(rest) = tok.strip_prefix('"') {
         // The closing quote is optional — the term may still be being typed.
@@ -693,6 +693,19 @@ fn pattern(tok: &str) -> Result<Pattern, String> {
             return Err("expected text between the quotes".into());
         }
         return Ok(Pattern::Literal(Literal::new(text)));
+    }
+    if let Some(rest) = tok.strip_prefix('^') {
+        // `^text`: rows whose name (or any cell) *starts* with text —
+        // anchored, case-insensitive, and escaped, so `^v1.` is literal.
+        if rest.is_empty() {
+            return Err("expected text after '^'".into());
+        }
+        let source = format!("^{}", regex::escape(rest));
+        return regex::RegexBuilder::new(&source)
+            .case_insensitive(true)
+            .build()
+            .map(|re| Pattern::Regex(Box::new(re)))
+            .map_err(|_| format!("bad prefix '{tok}'"));
     }
     if is_regex(tok) {
         let source = &tok[1..tok.len() - 1];

@@ -234,10 +234,20 @@ impl LogMatcher {
                 kind: Kind::All,
             };
         }
-        // `/pattern/` (at least the two slashes) is a regex.
+        // `/pattern/` (at least the two slashes) is a regex; `^text` is a
+        // prefix match — anchored, case-insensitive, and escaped.
         let kind = if rest.len() >= 2 && rest.starts_with('/') && rest.ends_with('/') {
             let pattern = &rest[1..rest.len() - 1];
             match regex::RegexBuilder::new(pattern)
+                .case_insensitive(true)
+                .build()
+            {
+                Ok(re) => Kind::Regex(re),
+                Err(_) => Kind::BadRegex,
+            }
+        } else if let Some(text) = rest.strip_prefix('^') {
+            let source = format!("^{}", regex::escape(text));
+            match regex::RegexBuilder::new(&source)
                 .case_insensitive(true)
                 .build()
             {
@@ -291,6 +301,19 @@ mod tests {
         let m = LogMatcher::new("");
         assert!(m.matches("anything"));
         assert!(!m.is_error());
+    }
+
+    #[test]
+    fn caret_prefix_matches_line_and_message_starts() {
+        let m = LogMatcher::new("^go");
+        // Through the `[ns/pod:ctr] ` display prefix (message retry) …
+        assert!(m.matches("[ns/pod:app] go-campaign-1"));
+        assert!(!m.matches("[ns/pod:app] ago-campaign-1"));
+        // … and against a line that itself starts with the text.
+        assert!(m.matches("go-campaign-1 booting"));
+        // Escaped: a literal dot in the prefix text stays literal.
+        assert!(LogMatcher::new("^v1.").matches("[x] v1.2 done"));
+        assert!(!LogMatcher::new("^v1.").matches("[x] v125 done"));
     }
 
     #[test]

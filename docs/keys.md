@@ -50,7 +50,7 @@ ownership scope are cleared. Startup still uses the configured default resource.
 | `space`                                                      | mark/unmark row for bulk actions                                                                                                                                                     |
 | `shift-up` / `shift-down`                                    | extend or reduce the marked range from the starting row                                                                                                                              |
 | `ctrl-space`                                                 | mark every row from the last `space` mark to the cursor                                                                                                                              |
-| `/`                                                          | filter: text · `a\|b` · `~fuzzy` · `/regex/` · `!inverse` · `label:text` local label search · `-l`/`-f` selectors (server-side on ⏎) · `status=X` `cpu>500m` `age<2h`                |
+| `/`                                                          | filter: text · `^prefix` · `a\|b` · `~fuzzy` · `/regex/` · `!inverse` · `label:text` local label search · `-l`/`-f` selectors (server-side on ⏎) · `status=X` `cpu>500m` `age<2h`                |
 | `Ctrl+Z`                                                     | toggle faults filter in pod views; configured actions take precedence; combine with `/`; press again to turn off                                                                     |
 | `n` / `0`                                                    | namespace switcher / all namespaces; `0` also selects all namespaces inside the switcher while the filter is empty                                                                   |
 | `W`                                                          | switch to the selected resource's namespace and keep the resource kind                                                                                                               |
@@ -166,7 +166,7 @@ point instead. See [PVC explore](features.md#pvc-explore).
 
 ## Logs view
 
-`/` filter (substring · `/regex/` · `!invert`) · `s`/`f` autoscroll · `w` wrap ·
+`/` filter (text · `^prefix` · `/regex/` · `!invert`) · `s`/`f` autoscroll · `w` wrap ·
 `J` JSON formatting · `Ctrl+Z` warning/error filter · `m` visual marker · `t` timestamps · `x` stop/resume stream · `z` clear buffer · `c` copy buffer ·
 `ctrl-s` save to file · `F` fullscreen (no chrome, clean text selection) ·
 `0`–`5` time anchors (tail · 1m · 5m · 15m · 30m · 1h) · `T` custom lookback (`s`/`m`/`h`/`d`, or `tail` for kubelet logs)
