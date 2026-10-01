@@ -53,7 +53,7 @@ ownership scope are cleared. Startup still uses the configured default resource.
 | `space`                                                      | mark/unmark row for bulk actions                                                                                                                                                                 |
 | `shift-up` / `shift-down`                                    | extend or reduce the marked range from the starting row                                                                                                                                          |
 | `ctrl-space`                                                 | mark every row from the last `space` mark to the cursor                                                                                                                                          |
-| `/`                                                          | filter: text · `a\|b` · `~fuzzy` · `/regex/` · `!inverse` · `label:text` local label search · `-l`/`-f` selectors (server-side on ⏎) · `status=X` `cpu>500m` `age<2h`                            |
+| `/`                                                          | filter: text · `^prefix` · `a\|b` · `~fuzzy` · `/regex/` · `!inverse` · `label:text` local label search · `-l`/`-f` selectors (server-side on ⏎) · `status=X` `cpu>500m` `age<2h`                            |
 | `Ctrl+Z`                                                     | toggle faults filter in pod, workload, Flux, and Argo CD views; configured actions take precedence; combine with `/`; press again to turn off                                                    |
 | `:workloads [ns]` / `:wk`                                    | deployments, statefulsets, daemonsets, cronjobs, jobs and pods in one table; row keys act on the row's own kind                                                                                  |
 | `:ns-resources [ns]`                                         | namespaced kinds with objects in the namespace (default: current; `all`/`*` = all namespaces) and how many; `⏎` opens the kind in that namespace, `r` counts again                               |
@@ -184,7 +184,7 @@ point instead. See [PVC explore](features.md#pvc-explore).
 
 ## Logs view
 
-`/` filter (substring · `/regex/` · `!invert`) · `s`/`f` autoscroll · `w` wrap ·
+`/` filter (text · `^prefix` · `/regex/` · `!invert`) · `s`/`f` autoscroll · `w` wrap ·
 `J` JSON view (raw/record/pretty) · `Ctrl+Z` warning/error filter · `m` visual marker · `t` timestamps · `x` stop/resume stream · `z` clear buffer · `c` copy buffer ·
 `a` default/all containers (pods with a default-container annotation) ·
 `ctrl-s` save to a file in `save_dir` · `F` fullscreen (no chrome, clean text selection) ·
