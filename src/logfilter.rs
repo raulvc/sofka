@@ -4,7 +4,9 @@
 //! narrowed the way you'd expect from `grep`:
 //!
 //! - `text`        — case-insensitive substring (the default)
-//! - `/re/`        — a regular expression (case-insensitive)
+//! - `/re/`        — a regular expression (case-insensitive); a `^`-anchored
+//!   pattern also tries the message after the `[…] ` source prefix, so
+//!   `/^ERROR/` finds lines whose *message* starts with ERROR
 //! - `!text`,`!/re/` — inverse: keep the lines that *don't* match
 //!
 //! An empty filter matches everything. A malformed regex matches nothing and is
@@ -258,7 +260,17 @@ impl LogMatcher {
         let base = match &self.kind {
             Kind::All => true,
             Kind::Substr(s) => s.matches(line),
-            Kind::Regex(re) => re.is_match(line),
+            Kind::Regex(re) => {
+                re.is_match(line)
+                    || (re.as_str().starts_with('^')
+                        // A `^` anchors before sofka's own `[ns/pod:ctr] `
+                        // display prefix, which no message starts with — retry
+                        // against the message that follows the prefix.
+                        && line.starts_with('[')
+                        && line
+                            .find("] ")
+                            .is_some_and(|end| re.is_match(&line[end + 2..])))
+            }
             Kind::BadRegex => false,
         };
         base ^ self.negate
@@ -300,6 +312,28 @@ mod tests {
         let m = LogMatcher::new("/level=(warn|error)/");
         assert!(m.matches("ts=1 level=ERROR msg=boom"));
         assert!(!m.matches("ts=1 level=info msg=ok"));
+    }
+
+    #[test]
+    fn anchored_regex_matches_the_message_after_the_source_prefix() {
+        let m = LogMatcher::new("/^ERROR/");
+        assert!(m.matches("[ns/pod:app] ERROR boom"));
+        assert!(m.matches("[ns/pod:app] error boom"));
+        assert!(!m.matches("[ns/pod:app] all good"));
+        assert!(!m.matches("[ns/pod:app] an ERROR happened"));
+    }
+
+    #[test]
+    fn anchored_regex_still_matches_the_source_prefix() {
+        let m = LogMatcher::new(r"/^\[ns/pod:app\]/");
+        assert!(m.matches("[ns/pod:app] whatever"));
+        assert!(!m.matches("[ns/other:app] whatever"));
+    }
+
+    #[test]
+    fn unanchored_regex_still_spans_prefix_and_message() {
+        let m = LogMatcher::new("/ERROR boom/");
+        assert!(m.matches("[ns/pod:app] ERROR boom"));
     }
 
     #[test]
