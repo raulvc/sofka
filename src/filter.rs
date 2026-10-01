@@ -116,6 +116,10 @@ pub enum Pattern {
 }
 
 impl Pattern {
+    /// Whether the pattern anchors at the start of what it tests (a `^…`
+    /// regex). Anchored patterns skip the combined "namespace name" haystack —
+    /// whose leading namespace would otherwise satisfy the anchor on every row
+    /// of a namespace — and match the name and cells individually.
     /// The text the user typed inside the markers — the fuzzy needle, the
     /// quoted text, or the regex source.
     pub fn text(&self) -> &str {
@@ -124,6 +128,10 @@ impl Pattern {
             Pattern::Literal(lit) => lit.text(),
             Pattern::Regex(re) => re.as_str(),
         }
+    }
+
+    pub fn is_anchored(&self) -> bool {
+        matches!(self, Pattern::Regex(re) if re.as_str().starts_with('^'))
     }
 }
 
