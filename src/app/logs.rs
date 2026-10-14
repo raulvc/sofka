@@ -150,7 +150,9 @@ impl LogLineMeta {
             if line.len() > JSON_RECORD_LIMIT {
                 return None;
             }
-            serde_json::to_string_pretty(&value).ok().and_then(|text| cache(text, 0))
+            serde_json::to_string_pretty(&value)
+                .ok()
+                .and_then(|text| cache(text, 0))
         });
         self.record_severity = record_severity;
         self.record = record;
@@ -805,6 +807,13 @@ impl LogsView {
 
     pub(super) fn toggle_json(&mut self) {
         self.set_json(self.json.next());
+    }
+
+    /// Start the `J` cycle at the pretty step: a configured external
+    /// formatter means the user wants formatted output without pressing `J`
+    /// first (fork: `[logs] format_command`).
+    pub fn seed_pretty(&mut self) {
+        self.json = JsonView::Pretty;
     }
 
     pub(super) fn set_json(&mut self, view: JsonView) {
