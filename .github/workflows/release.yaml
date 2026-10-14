@@ -98,6 +98,8 @@ jobs:
   # the workflow, because a called workflow received the `packages`
   # environment secrets empty. GITHUB_TOKEN may trigger workflow_dispatch.
   package-repos:
+    # Fork releases skip pkg.sofka.rs (the packages environment is upstream's).
+    if: ${{ !contains(github.event.release.tag_name, '-fork') }}
     needs: upload-assets
     runs-on: ubuntu-latest
     permissions:
