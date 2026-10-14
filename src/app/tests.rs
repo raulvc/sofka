@@ -40213,7 +40213,7 @@ async fn log_json_shortcut_formats_primitive_arrays_with_trailing_whitespace() {
 async fn log_json_records_format_without_a_press_when_enabled_from_config() {
     let (mut app, _rx) = test_app();
     app.mode = Mode::Logs;
-    app.logs.json = true;
+    app.logs.seed_pretty();
     app.logs.format_command = vec!["tr".into(), "a-z".into(), "A-Z".into()];
     shortcut_log_lines(&mut app, vec![r#"[app] {"msg":"hi"}"#.into()]);
     assert_eq!(app.logs.display_line(0), r#"[app] {"MSG":"HI"}"#);
@@ -40229,6 +40229,7 @@ async fn log_json_formats_records_larger_than_the_builtin_limit() {
     let big = format!(r#"[app] {{"stacktrace":"{}"}}"#, "x".repeat(8192));
     assert!(big.len() > 4096);
     shortcut_log_lines(&mut app, vec![big]);
+    app.handle_key(press(KeyCode::Char('J'))).unwrap();
     app.handle_key(press(KeyCode::Char('J'))).unwrap();
     assert!(app.logs.display_line(0).contains(r#""STACKTRACE":"#));
 }
@@ -40259,7 +40260,9 @@ async fn log_json_shortcut_formats_records_through_the_configured_command() {
         vec![r#"[app] {"msg":"hello"}"#.into(), "plain text".into()],
     );
     app.handle_key(press(KeyCode::Char('J'))).unwrap();
-    assert!(app.logs.json);
+    assert_eq!(app.logs.json, logs::JsonView::Record);
+    app.handle_key(press(KeyCode::Char('J'))).unwrap();
+    assert_eq!(app.logs.json, logs::JsonView::Pretty);
     assert_eq!(app.logs.display_line(0), r#"[app] {"MSG":"HELLO"}"#);
     assert_eq!(app.logs.display_line(1), "plain text");
     assert_eq!(app.logs.view.lines[0], r#"[app] {"msg":"hello"}"#);
@@ -40274,6 +40277,7 @@ async fn log_json_shortcut_supports_a_line_placeholder_argument() {
     app.logs.format_command = vec!["printf".into(), "X:%s".into(), "$LINE".into()];
     shortcut_log_lines(&mut app, vec![r#"[app] {"msg":"hi"}"#.into()]);
     app.handle_key(press(KeyCode::Char('J'))).unwrap();
+    app.handle_key(press(KeyCode::Char('J'))).unwrap();
     assert_eq!(app.logs.display_line(0), r#"[app] X:{"msg":"hi"}"#);
 }
 
@@ -40284,7 +40288,7 @@ async fn log_json_shortcut_falls_back_to_raw_when_the_tool_is_missing() {
     app.logs.format_command = vec!["/nonexistent/sofka-formatter".into()];
     shortcut_log_lines(&mut app, vec![r#"[app] {"msg":"hi"}"#.into()]);
     app.handle_key(press(KeyCode::Char('J'))).unwrap();
-    assert!(app.logs.json);
+    assert_eq!(app.logs.json, logs::JsonView::Record);
     assert_eq!(app.logs.display_line(0), r#"[app] {"msg":"hi"}"#);
     shortcut_log_lines(&mut app, vec![r#"[app] {"msg":"second"}"#.into()]);
     assert_eq!(app.logs.display_line(1), r#"[app] {"msg":"second"}"#);
