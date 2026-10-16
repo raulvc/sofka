@@ -1732,9 +1732,9 @@ fn draw_table(frame: &mut Frame, app: &mut App, area: Rect) {
                     {
                         match color {
                             crate::theme::CellColor::Fixed(color) => Style::default().fg(*color),
-                            crate::theme::CellColor::Swatch(name) => Style::default().fg(
-                                theme::swatch_color(name).unwrap_or(row_color),
-                            ),
+                            crate::theme::CellColor::Swatch(name) => {
+                                Style::default().fg(theme::swatch_color(name).unwrap_or(row_color))
+                            }
                         }
                     } else {
                         Style::default().fg(row_color)
