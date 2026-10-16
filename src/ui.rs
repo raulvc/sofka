@@ -1567,15 +1567,16 @@ fn draw_table(frame: &mut Frame, app: &mut App, area: Rect) {
                                 .map(theme::severity_fg)
                                 .unwrap_or(row_color)
                         };
+                        Style::default().fg(color)
                     } else if let Some(color) = cell_colors[i]
                         .as_ref()
                         .and_then(|map| map.get(c.as_str().trim()))
                     {
                         match color {
                             crate::theme::CellColor::Fixed(color) => Style::default().fg(*color),
-                            crate::theme::CellColor::Swatch(name) => Style::default().fg(
-                                theme::swatch_color(name).unwrap_or(row_color),
-                            ),
+                            crate::theme::CellColor::Swatch(name) => {
+                                Style::default().fg(theme::swatch_color(name).unwrap_or(row_color))
+                            }
                         }
                     } else {
                         Style::default().fg(row_color)
