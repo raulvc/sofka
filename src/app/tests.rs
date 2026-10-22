@@ -41261,6 +41261,48 @@ async fn log_json_huge_records_survive_a_tool_that_never_reads_stdin() {
 }
 
 #[tokio::test]
+async fn log_json_pretty_formats_records_larger_than_the_old_builtin_limit() {
+    let (mut app, _rx) = test_app();
+    app.mode = Mode::Logs;
+    let big = format!(r#"{{"stacktrace":"{}"}}"#, "x".repeat(8192));
+    shortcut_log_lines(&mut app, vec![big]);
+    app.handle_key(press(KeyCode::Char('J'))).unwrap();
+    app.handle_key(press(KeyCode::Char('J'))).unwrap();
+    assert!(app.logs.display_line(0).contains('\n'));
+}
+
+#[tokio::test]
+async fn log_json_external_formats_records_larger_than_the_old_external_limit() {
+    let (mut app, _rx) = test_app();
+    app.mode = Mode::Logs;
+    app.logs.format_command = vec!["tr".into(), "a-z".into(), "A-Z".into()];
+    let big = format!(r#"{{"stacktrace":"{}"}}"#, "x".repeat(300_000));
+    shortcut_log_lines(&mut app, vec![big]);
+    app.handle_key(press(KeyCode::Char('J'))).unwrap();
+    app.handle_key(press(KeyCode::Char('J'))).unwrap();
+    assert!(app.logs.display_line(0).contains(r#""STACKTRACE":"#));
+}
+
+#[tokio::test]
+async fn log_json_line_argument_over_the_os_limit_falls_back_without_breaking() {
+    let (mut app, _rx) = test_app();
+    app.mode = Mode::Logs;
+    app.logs.format_command = vec![
+        "sh".into(),
+        "-c".into(),
+        "printf '%s\\n' \"$0\" | tr a-z A-Z".into(),
+        "$LINE".into(),
+    ];
+    let huge = format!(r#"{{"stacktrace":"{}"}}"#, "x".repeat(200_000));
+    shortcut_log_lines(&mut app, vec![huge]);
+    app.handle_key(press(KeyCode::Char('J'))).unwrap();
+    app.handle_key(press(KeyCode::Char('J'))).unwrap();
+    assert!(app.logs.display_line(0).starts_with(r#"{"stacktrace":"xx"#));
+    shortcut_log_lines(&mut app, vec![r#"{"stacktrace":"ok"}"#.into()]);
+    assert_eq!(app.logs.display_line(1), r#"{"STACKTRACE":"OK"}"#);
+}
+
+#[tokio::test]
 async fn log_json_shortcut_formats_records_through_the_configured_command() {
     let (mut app, _rx) = test_app();
     app.mode = Mode::Logs;
