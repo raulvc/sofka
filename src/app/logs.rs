@@ -44,12 +44,12 @@ impl LogLineMeta {
 }
 
 pub(super) const JSON_CACHE_LIMIT: usize = 8 * 1024 * 1024;
-const JSON_RECORD_LIMIT: usize = 4096;
-/// External formatters get a much larger input allowance than the built-in
-/// pretty-printer: stack traces routinely exceed the built-in limit, and the
-/// tool decides what it can handle. Output is still charged to the shared
-/// cache budget, which bounds memory.
-const EXTERNAL_RECORD_LIMIT: usize = 256 * 1024;
+/// Records passed as a `$LINE` argument cannot exceed the kernel's
+/// per-argument limit (Linux rejects one argv string over 128 KiB); a larger
+/// record falls back to raw for itself instead of failing the spawn and
+/// disabling the formatter. Stdin-piped tools take any size, and the shared
+/// cache budget bounds what any formatted output may keep.
+const ARGV_RECORD_LIMIT: usize = 128 * 1024;
 
 impl LogLineMeta {
     fn format_json(
@@ -102,9 +102,6 @@ impl LogLineMeta {
         let external = if format_command.is_empty() {
             None
         } else {
-            if line.len() > EXTERNAL_RECORD_LIMIT {
-                return;
-            }
             match format_external(format_command, payload) {
                 ExternalFormat::Formatted(pretty) => Some(pretty),
                 ExternalFormat::Invalid => return,
@@ -145,11 +142,6 @@ impl LogLineMeta {
         });
         let (record, record_parts) = record.unzip();
         let pretty = external.map(|text| cache(text, 0)).unwrap_or_else(|| {
-            // The built-in pretty view keeps the original record-size cap;
-            // only the external formatter accepts larger records.
-            if line.len() > JSON_RECORD_LIMIT {
-                return None;
-            }
             serde_json::to_string_pretty(&value)
                 .ok()
                 .and_then(|text| cache(text, 0))
@@ -705,6 +697,10 @@ fn format_external(command: &[String], payload: &str) -> ExternalFormat {
     let Some((program, args)) = command.split_first() else {
         return ExternalFormat::Invalid;
     };
+    let as_argument = args.iter().any(|arg| arg == "$LINE");
+    if as_argument && payload.len() > ARGV_RECORD_LIMIT {
+        return ExternalFormat::Invalid;
+    }
     let mut child = match Command::new(program)
         .args(args.iter().map(|arg| {
             if arg == "$LINE" {
@@ -723,7 +719,7 @@ fn format_external(command: &[String], payload: &str) -> ExternalFormat {
     };
     // Write from a thread: a payload larger than the pipe capacity must not
     // block the caller when the tool stops draining stdin.
-    let writer = if !args.iter().any(|arg| arg == "$LINE") {
+    let writer = if !as_argument {
         let stdin = child.stdin.take();
         let payload = payload.to_owned();
         Some(std::thread::spawn(move || {
