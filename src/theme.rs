@@ -625,7 +625,7 @@ pub fn parse_color_spec(spec: &str) -> Option<CellColor> {
     let name = spec.to_ascii_lowercase();
     SWATCH_NAMES
         .contains(&name.as_str())
-        .then(|| CellColor::Swatch(name))
+        .then_some(CellColor::Swatch(name))
 }
 
 /// Resolve a swatch name against the active palette.
