@@ -606,7 +606,7 @@ impl App {
         if item == "Custom…" {
             return;
         }
-        let ports = item.split_whitespace().next().unwrap_or(&item).to_string();
+        let ports = item.split_whitespace().next().unwrap_or(item).to_string();
         let Some((ns, name)) = self.pf_picker_target.clone() else {
             return;
         };
