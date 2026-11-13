@@ -94,7 +94,7 @@ class ReleasePackagesTest(unittest.TestCase):
     def test_failed_capture_stops_before_metadata(self):
         with tempfile.TemporaryDirectory() as temporary:
             stage = Path(temporary)
-            target = "aarch64-apple-darwin"
+            target = "x86_64-unknown-linux-gnu"
             config = release.configure(target, stage, stage / "dist")
             with patch.object(release, "run", side_effect=subprocess.CalledProcessError(1, "cargo")) as run:
                 with self.assertRaises(subprocess.CalledProcessError):
@@ -250,7 +250,7 @@ class ReleasePackagesTest(unittest.TestCase):
                     self.assertIn("RUSTFLAGS=-C target-feature=+crt-static", config["builds"][0]["env"])
 
     def test_aqua_archive_names_remain_compatible(self):
-        config = release.configure("aarch64-apple-darwin", Path("stage"), Path("dist"))
+        config = release.configure("x86_64-unknown-linux-gnu", Path("stage"), Path("dist"))
         archive = config["archives"][0]
         self.assertEqual(archive["name_template"], "{{ .ProjectName }}-{{ .Tag }}-{{ .Target }}")
         self.assertEqual(archive["formats"], ["tar.gz"])

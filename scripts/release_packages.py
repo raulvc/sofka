@@ -17,13 +17,6 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 TARGETS = {
     "x86_64-unknown-linux-gnu": "ubuntu-22.04",
-    "aarch64-unknown-linux-gnu": "ubuntu-22.04-arm",
-    "x86_64-unknown-linux-musl": "ubuntu-22.04",
-    "aarch64-unknown-linux-musl": "ubuntu-22.04-arm",
-    "x86_64-apple-darwin": "macos-latest",
-    "aarch64-apple-darwin": "macos-latest",
-    "x86_64-pc-windows-msvc": "windows-2025",
-    "aarch64-pc-windows-msvc": "windows-11-arm",
 }
 REQUIRED = ("LICENSE-MIT", "LICENSE-APACHE", "THIRD-PARTY-LICENSES.txt")
 
